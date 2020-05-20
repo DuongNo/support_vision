@@ -22,16 +22,11 @@ if not os.path.isdir(input_folder):
     sys.exit()
 else:
     sub_directorys = os.listdir(input_folder)
-     #print('number sub folder :',sub_directorys)
-     #sys.exit()
 
 if not os.path.isdir(output_folder):
     os.mkdir(output_folder)
 
 detector = MTCNN()
-
-#folder_input = '/home/duong/Documents/researching/GAN/common/image_enhance/input_image'
-#folder_output = '/home/duong/Documents/researching/GAN/common/image_enhance/output'
 
 face_ok = os.path.join(output_folder,'face_ok')
 not_face = os.path.join(output_folder,'not_face')
@@ -72,36 +67,72 @@ for folder in sub_directorys:
                 if confiden > 0.9:
                     face_in_image = True
                     rect = result['box']
-                    if rect[2] < 60 or rect[3] < 60:
+                    if rect[2] < 90 or rect[3] < 90:
                         size_face_small = True
                     #show result for checking
                     #if show_result:                               
                         #image_show = cv2.rectangle(image,(rect[0],rect[1]),(rect[0]+rect[2],rect[1]+rect[3]),(0,255,0),2)
 
-                    #crop area around face
-                    roi = []
-                    #roi[0]
-                    if rect[0] >= int(0.2 * rect[2]):
-                        roi.append(rect[0] - int(0.2*rect[2]))
+                    #if crop area around face
+                    crop_image = True
+
+                    a = rect[2] / 112
+                    b = rect[3] / 112
+                    w_crop = int(124*a)
+                    h_crop = int(124*b)
+                    w_12 = int((w_crop-rect[2]) / 2)
+                    h_12 = int((h_crop - rect[3]) /2)
+
+                    if crop_image:
+                        roi = []
+                        #roi[0]
+                        if rect[0] >= w_12:
+                            roi.append(rect[0] - w_12)
+                        else:
+                            roi.append(0)
+                        #roi[1]
+                        if rect[1] >= h_12:
+                            roi.append(rect[1] - h_12)
+                        else:
+                            roi.append(0)
+                        #roi[2]
+                        if (W - (rect[0]+rect[2]) >= w_12):
+                            roi.append(rect[2] + rect[0] + w_12 - roi[0])
+                        else:
+                            roi.append( W - roi[0])
+                        #roi[3]
+                        if (H - (rect[1]+rect[3]) >= h_12):
+                            roi.append(rect[3] + rect[1] + h_12 - roi[1])
+                        else:
+                            roi.append( H - roi[1])
+
+                        # if rect[0] >= 10:
+                        #     roi.append(rect[0] - 10)
+                        # else:
+                        #     roi.append(0)
+                        # #roi[1]
+                        # if rect[1] >= 10:
+                        #     roi.append(rect[1] - 10)
+                        # else:
+                        #     roi.append(0)
+                        # #roi[2]
+                        # if (W - (rect[0]+rect[2]) >= 10):
+                        #     roi.append(rect[2] + 20)
+                        # else:
+                        #     roi.append( W - roi[0])
+                        # #roi[3]
+                        # if (H - (rect[1]+rect[3]) >= 10):
+                        #     roi.append(rect[3]) + 20)
+                        # else:
+                        #     roi.append( H - roi[1])
+
                     else:
-                        roi.append(0)
-                    #roi[1]
-                    if rect[1] >= int(0.15 * rect[3]):
-                        roi.append(rect[1] - int(0.15*rect[3]))
-                    else:
-                        roi.append(0)
-                    #roi[2]
-                    if (W - (rect[0]+rect[2]) >= int(0.2 * rect[2])):
-                        roi.append(int(1.2*rect[2]) + rect[0] - roi[0])
-                    else:
-                        roi.append( W - roi[0])
-                    #roi[3]
-                    if (H - (rect[1]+rect[3]) >= int(0.15 * rect[3])):
-                        roi.append(int(1.15*rect[3]) + rect[1] - roi[1])
-                    else:
-                        roi.append( H - roi[1])
+                        roi = rect
                     
                     image_roi = image[roi[1]:roi[1]+roi[3],roi[0]:roi[0]+roi[2]]
+                    print('shape of image :',image_roi.shape)
+                    if face_in_image and not size_face_small:
+                        image_roi = cv2.resize(image_roi,(124,124),interpolation = cv2.INTER_AREA)
 
                     if face_in_image and not size_face_small:
                         num_image_include_face_ok +=1
@@ -118,6 +149,14 @@ for folder in sub_directorys:
                         output_file = os.path.join(sub, file)
                         cv2.imwrite(output_file,image_roi)
                         num_image_small_size +=1
+
+                    if not face_in_image:
+                        num_image_not_include_face +=1
+                        sub = os.path.join(not_face,folder)
+                        if not os.path.isdir(sub):
+                            os.mkdir(sub)
+                        output_file = os.path.join(sub,file)
+                        cv2.imwrite(output_file,image_roi)
                     
                     if show_result:
                         cv2.imshow('roi',image_roi)                             
@@ -129,17 +168,6 @@ for folder in sub_directorys:
                 cv2.imshow('Display',image_show)
                 cv2.waitKey(0)
             
-            if not face_in_image:
-                num_image_not_include_face +=1
-                sub = os.path.join(not_face,folder)
-                if not os.path.isdir(sub):
-                    os.mkdir(sub)
-                output_file = os.path.join(sub,file)
-                cv2.imwrite(output_file,image_roi)
-
-
-
-
 print('number image include face ok : %d' % (num_image_include_face_ok))
 print('number image not include face : %d' % (num_image_not_include_face))
 print('number image small size : %d' % (num_image_small_size))
